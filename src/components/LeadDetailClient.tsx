@@ -58,8 +58,6 @@ export default function LeadDetailClient({
     setScorecard((prev) => ({ ...prev, ...patch }));
   }
 
-  // Debounced autosave — fires ~500ms after the last edit so we're not
-  // hitting the API on every keystroke.
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
@@ -119,7 +117,6 @@ export default function LeadDetailClient({
         {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved." : ""}
       </p>
 
-      {/* Mobile / narrow-screen tab switcher */}
       <div className="no-print flex gap-2 lg:hidden">
         <button
           onClick={() => setMobileTab("scorecard")}
@@ -141,7 +138,7 @@ export default function LeadDetailClient({
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className={mobileTab === "scorecard" ? "block" : "hidden lg:block"}>
-          <ScorecardForm scorecard={scorecard} onChange={handleChange} />
+          <ScorecardForm lead={lead} scorecard={scorecard} onChange={handleChange} />
         </div>
         <div className={mobileTab === "script" ? "flex flex-col gap-4" : "hidden lg:flex lg:flex-col lg:gap-4"}>
           <CallScriptPanel model={script} />
