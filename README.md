@@ -29,7 +29,10 @@ database to set up.
 
 ## Deployment
 
-Live at Vercel, connected to this repo's `main` branch. The Supabase project
+Live at Vercel. Deployed by uploading this repo's file tree directly
+(Vercel's GitHub App isn't installed on this org, so it isn't git-linked —
+each change needs a manual redeploy rather than auto-deploying on push to
+`main`). The Supabase project
 URL and publishable (anon) key are baked into `lib/db.ts` rather than set as
 Vercel env vars — that key is meant to be public and is scoped by the RLS
 policies on the `leads`/`scorecards`/`call_logs` tables (see the
@@ -105,6 +108,24 @@ necessity, not by choice:
   `competitor_notes`, `website_gallery_updated` — would need paid
   scraping/SERP services (e.g. SerpApi) or manual lookup; no clean API
   exists for any of these.
+
+## SEO audit
+
+A "Run SEO audit" panel on the lead detail screen (`lib/seo-audit.ts`,
+`SeoAuditPanel.tsx`) fetches the lead's website and runs deterministic
+technical + on-page checks — no paid SEO tool, just reading the HTML:
+
+- HTTPS, title tag (presence + length), meta description (presence +
+  length), single-H1 rule, mobile-responsive viewport, canonical tag,
+  Open Graph tags, JSON-LD structured data, image alt-text coverage,
+  robots noindex directive, and rough word count (thin-content check).
+
+Each finding reports Issue / Impact / Evidence / Fix, and a weighted
+0–100 score summarizes overall health. This is a lightweight, single-page
+technical audit — it doesn't crawl the whole site, check backlinks, or
+pull real search-ranking data (those need paid tools like Screaming Frog
+or Ahrefs); it's meant to hand you one more concrete, verifiable detail
+for the pitch, same as the hook field.
 
 ## V2 hooks (not built, left as clear extension points)
 

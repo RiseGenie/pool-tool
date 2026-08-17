@@ -9,6 +9,7 @@ import ScoreBadge from "./ScoreBadge";
 import ScorecardForm from "./ScorecardForm";
 import CallScriptPanel from "./CallScriptPanel";
 import CallLogWidget from "./CallLogWidget";
+import SeoAuditPanel from "./SeoAuditPanel";
 
 const EMPTY_SCORECARD: Scorecard = {
   lead_id: "",
@@ -148,6 +149,8 @@ export default function LeadDetailClient({
           <CallLogWidget leadId={lead.id} initialCalls={initialCalls} />
         </div>
       </div>
+
+      <SeoAuditPanel websiteUrl={lead.website_url} />
     </div>
   );
 }
