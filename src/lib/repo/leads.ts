@@ -1,42 +1,48 @@
-import db from "@/lib/db";
+import { supabase } from "@/lib/db";
 import { computeScore } from "@/lib/scoring";
 import type { Lead, LeadWithMeta, NewLead } from "@/lib/types";
-import { rowToScorecard } from "./scorecards";
+import { getScorecard } from "./scorecards";
 
 function generateId(): string {
   return crypto.randomUUID();
 }
 
-export function listLeads(): LeadWithMeta[] {
-  const leads = db
-    .prepare<[], Lead>(`SELECT * FROM leads ORDER BY created_at DESC`)
-    .all();
+export async function listLeads(): Promise<LeadWithMeta[]> {
+  const { data: leads, error } = await supabase
+    .from("leads")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
 
-  const scorecardStmt = db.prepare(`SELECT * FROM scorecards WHERE lead_id = ?`);
-  const lastCallStmt = db.prepare(
-    `SELECT outcome FROM call_logs WHERE lead_id = ? ORDER BY timestamp DESC LIMIT 1`
-  );
-
-  return leads.map((lead) => {
-    const scorecardRow = scorecardStmt.get(lead.id);
-    const scorecard = scorecardRow ? rowToScorecard(scorecardRow) : null;
+  const results: LeadWithMeta[] = [];
+  for (const lead of (leads ?? []) as Lead[]) {
+    const scorecard = await getScorecard(lead.id);
     const { score, label } = computeScore(scorecard);
-    const lastCall = lastCallStmt.get(lead.id) as { outcome: string } | undefined;
+    const { data: lastCall } = await supabase
+      .from("call_logs")
+      .select("outcome")
+      .eq("lead_id", lead.id)
+      .order("timestamp", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    return {
+    results.push({
       ...lead,
       opportunity_score: score,
       opportunity_label: scorecard ? label : "Not scored",
       last_call_outcome: (lastCall?.outcome as LeadWithMeta["last_call_outcome"]) ?? null,
-    };
-  });
+    });
+  }
+  return results;
 }
 
-export function getLead(id: string): Lead | null {
-  return (db.prepare(`SELECT * FROM leads WHERE id = ?`).get(id) as Lead | undefined) ?? null;
+export async function getLead(id: string): Promise<Lead | null> {
+  const { data, error } = await supabase.from("leads").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return (data as Lead) ?? null;
 }
 
-export function createLead(input: NewLead): Lead {
+export async function createLead(input: NewLead): Promise<Lead> {
   const lead: Lead = {
     id: generateId(),
     business_name: input.business_name,
@@ -51,43 +57,29 @@ export function createLead(input: NewLead): Lead {
     created_at: new Date().toISOString(),
   };
 
-  db.prepare(
-    `INSERT INTO leads (
-      id, business_name, contact_name, phone, email, city,
-      website_url, google_business_url, facebook_url, instagram_url, created_at
-    ) VALUES (@id, @business_name, @contact_name, @phone, @email, @city,
-      @website_url, @google_business_url, @facebook_url, @instagram_url, @created_at)`
-  ).run(lead);
+  const { error } = await supabase.from("leads").insert(lead);
+  if (error) throw error;
 
   // Seed an empty scorecard row so the detail screen always has one to edit.
-  db.prepare(`INSERT INTO scorecards (lead_id) VALUES (?)`).run(lead.id);
+  const { error: scError } = await supabase.from("scorecards").insert({ lead_id: lead.id });
+  if (scError) throw scError;
 
   return lead;
 }
 
-export function updateLead(id: string, input: Partial<NewLead>): Lead | null {
-  const existing = getLead(id);
+export async function updateLead(id: string, input: Partial<NewLead>): Promise<Lead | null> {
+  const existing = await getLead(id);
   if (!existing) return null;
 
   const updated: Lead = { ...existing, ...input };
 
-  db.prepare(
-    `UPDATE leads SET
-      business_name = @business_name,
-      contact_name = @contact_name,
-      phone = @phone,
-      email = @email,
-      city = @city,
-      website_url = @website_url,
-      google_business_url = @google_business_url,
-      facebook_url = @facebook_url,
-      instagram_url = @instagram_url
-    WHERE id = @id`
-  ).run(updated);
+  const { error } = await supabase.from("leads").update(updated).eq("id", id);
+  if (error) throw error;
 
   return updated;
 }
 
-export function deleteLead(id: string): void {
-  db.prepare(`DELETE FROM leads WHERE id = ?`).run(id);
+export async function deleteLead(id: string): Promise<void> {
+  const { error } = await supabase.from("leads").delete().eq("id", id);
+  if (error) throw error;
 }

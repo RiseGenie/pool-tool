@@ -1,26 +1,42 @@
 # Lead Call Prep
 
-A single-user, local-first web app for researching pool-construction-company
-leads and calling them with a personalized script. Each lead gets one screen
-combining a research scorecard (left) and a live, personalized call script
-(right).
+A single-user web app for researching pool-construction-company leads and
+calling them with a personalized script. Each lead gets one screen combining
+a research scorecard (left) and a live, personalized call script (right).
+
+Originally scoped as local-only for V1; now also deployed (see "Deployment"
+below) since a hosted link was needed to view it off the local machine.
 
 ## Stack
 
 - **Next.js (App Router) + TypeScript + Tailwind** — one process serves both
-  the UI and the API routes, so there's no separate backend to run.
-- **SQLite via `better-sqlite3`** — a single local file at `data/pool-tool.db`.
-  No server, no auth, no deployment config. Data survives restarts.
+  the UI and the API routes, so there's no separate backend process to run.
+- **Postgres via Supabase** (`@supabase/supabase-js`) — swapped in from the
+  original local SQLite (`better-sqlite3`) design so data persists on a
+  serverless deploy, which has no durable local disk. `lib/db.ts` is the only
+  file that knows about Supabase; everything else talks to `lib/repo/*`.
 
-## Running it
+## Running it locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open http://localhost:3000. The SQLite file is created automatically at
-`data/pool-tool.db` on first run (gitignored).
+Open http://localhost:3000. This talks to the same hosted Supabase project
+as the deployed version (see `lib/db.ts`) — there's no separate local
+database to set up.
+
+## Deployment
+
+Live at Vercel, connected to this repo's `main` branch. The Supabase project
+URL and publishable (anon) key are baked into `lib/db.ts` rather than set as
+Vercel env vars — that key is meant to be public and is scoped by the RLS
+policies on the `leads`/`scorecards`/`call_logs` tables (see the
+`init_schema` Supabase migration), so it's safe to ship in server-side code.
+The Vercel project has password protection enabled at the platform level
+(Project Settings → Deployment Protection) as the access gate, since this
+tool has no in-app auth.
 
 ## How it works
 
@@ -54,7 +70,7 @@ src/
     api/leads/...                   # REST API routes (CRUD for leads/scorecards/calls)
   components/                       # UI components (forms, toggles, script panel, etc.)
   lib/
-    db.ts                           # better-sqlite3 connection + schema
+    db.ts                           # Supabase client
     types.ts                        # Lead / Scorecard / CallLog types
     scoring.ts                      # Weighted opportunity score + weakest-area detection
     script.ts                       # Call script generation with placeholder substitution
@@ -75,7 +91,8 @@ src/
 
 ## Notes
 
-- No auth, no multi-user support, no hosted backend — this is intentionally
-  scoped to run on `localhost` for one person.
-- No external API calls are made. All scorecard fields are entered manually
-  after you look them up.
+- No in-app auth, no multi-user support — this is scoped for one person.
+  Public access to the deployed URL is gated by Vercel's platform-level
+  password protection instead of app code.
+- No external research API calls are made. All scorecard fields are entered
+  manually after you look them up.

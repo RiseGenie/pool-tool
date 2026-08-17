@@ -10,13 +10,12 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "better-sqlite3": "^11.10.0",
+    "@supabase/supabase-js": "^2.45.4",
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

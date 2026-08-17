@@ -9,18 +9,18 @@ interface Params {
 
 export async function GET(_req: NextRequest, { params }: Params) {
   const { id } = await params;
-  const lead = getLead(id);
+  const lead = await getLead(id);
   if (!lead) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
-  const scorecard = getScorecard(id);
+  const scorecard = await getScorecard(id);
   return NextResponse.json({ lead, scorecard });
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const body = (await req.json()) as Partial<NewLead>;
-  const lead = updateLead(id, body);
+  const lead = await updateLead(id, body);
   if (!lead) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
@@ -29,6 +29,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const { id } = await params;
-  deleteLead(id);
+  await deleteLead(id);
   return NextResponse.json({ ok: true });
 }

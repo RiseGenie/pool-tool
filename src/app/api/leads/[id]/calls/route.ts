@@ -9,12 +9,12 @@ interface Params {
 
 export async function GET(_req: NextRequest, { params }: Params) {
   const { id } = await params;
-  return NextResponse.json(listCalls(id));
+  return NextResponse.json(await listCalls(id));
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
   const { id } = await params;
-  const lead = getLead(id);
+  const lead = await getLead(id);
   if (!lead) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Valid outcome is required" }, { status: 400 });
   }
 
-  const call = addCall(id, {
+  const call = await addCall(id, {
     outcome: body.outcome,
     callback_datetime: body.callback_datetime ?? null,
     notes: body.notes ?? null,

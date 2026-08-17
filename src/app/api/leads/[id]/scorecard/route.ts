@@ -9,18 +9,18 @@ interface Params {
 
 export async function GET(_req: NextRequest, { params }: Params) {
   const { id } = await params;
-  const scorecard = getScorecard(id);
+  const scorecard = await getScorecard(id);
   return NextResponse.json(scorecard);
 }
 
 export async function PUT(req: NextRequest, { params }: Params) {
   const { id } = await params;
-  const lead = getLead(id);
+  const lead = await getLead(id);
   if (!lead) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
 
   const body = (await req.json()) as Partial<ScorecardInput>;
-  const scorecard = upsertScorecard(id, body);
+  const scorecard = await upsertScorecard(id, body);
   return NextResponse.json(scorecard);
 }

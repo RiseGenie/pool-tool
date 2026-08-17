@@ -1,19 +1,21 @@
-import db from "@/lib/db";
+import { supabase } from "@/lib/db";
 import type { CallLog, NewCallLog } from "@/lib/types";
 
 function generateId(): string {
   return crypto.randomUUID();
 }
 
-export function listCalls(leadId: string): CallLog[] {
-  return db
-    .prepare<[string], CallLog>(
-      `SELECT * FROM call_logs WHERE lead_id = ? ORDER BY timestamp DESC`
-    )
-    .all(leadId);
+export async function listCalls(leadId: string): Promise<CallLog[]> {
+  const { data, error } = await supabase
+    .from("call_logs")
+    .select("*")
+    .eq("lead_id", leadId)
+    .order("timestamp", { ascending: false });
+  if (error) throw error;
+  return (data as CallLog[]) ?? [];
 }
 
-export function addCall(leadId: string, input: NewCallLog): CallLog {
+export async function addCall(leadId: string, input: NewCallLog): Promise<CallLog> {
   const call: CallLog = {
     id: generateId(),
     lead_id: leadId,
@@ -23,10 +25,8 @@ export function addCall(leadId: string, input: NewCallLog): CallLog {
     notes: input.notes ?? null,
   };
 
-  db.prepare(
-    `INSERT INTO call_logs (id, lead_id, timestamp, outcome, callback_datetime, notes)
-     VALUES (@id, @lead_id, @timestamp, @outcome, @callback_datetime, @notes)`
-  ).run(call);
+  const { error } = await supabase.from("call_logs").insert(call);
+  if (error) throw error;
 
   return call;
 }

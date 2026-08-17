@@ -2,8 +2,10 @@ import { listLeads } from "@/lib/repo/leads";
 import LeadTable from "@/components/LeadTable";
 import AddLeadForm from "@/components/AddLeadForm";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
-  const leads = listLeads();
+  const leads = await listLeads();
 
   return (
     <main className="flex flex-col gap-4">

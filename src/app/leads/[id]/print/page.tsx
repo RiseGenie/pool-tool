@@ -89,16 +89,18 @@ function scorecardSections(sc: Scorecard) {
   ];
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function PrintPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const lead = getLead(id);
+  const lead = await getLead(id);
   if (!lead) notFound();
 
-  const scorecard = getScorecard(id);
+  const scorecard = await getScorecard(id);
   const sc: Scorecard =
     scorecard ?? {
       lead_id: id,
