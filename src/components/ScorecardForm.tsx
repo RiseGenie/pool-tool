@@ -1,7 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
-import type { Scorecard, ScorecardInput } from "@/lib/types";
+import { type ReactNode, useState } from "react";
+import type { Lead, Scorecard, ScorecardInput } from "@/lib/types";
+import type { WebsiteScanResult } from "@/lib/website-scan";
+import type { PlacesScanResult } from "@/lib/places-scan";
 import TrafficLight from "./TrafficLight";
 import BoolToggle from "./BoolToggle";
 
@@ -25,10 +27,21 @@ function Field({
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({
+  title,
+  action,
+  children,
+}: {
+  title: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-slate-500">{title}</h3>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">{title}</h3>
+        {action}
+      </div>
       <div>{children}</div>
     </div>
   );
@@ -37,16 +50,101 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 const textInputClass =
   "w-48 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-slate-500 focus:outline-none";
 
+const autoFillButtonClass =
+  "rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50";
+
 export default function ScorecardForm({
+  lead,
   scorecard,
   onChange,
 }: {
+  lead: Lead;
   scorecard: Scorecard;
   onChange: (patch: Partial<ScorecardInput>) => void;
 }) {
+  const [websiteScanState, setWebsiteScanState] = useState<
+    "idle" | "loading" | "done" | "error"
+  >("idle");
+  const [gbpScanState, setGbpScanState] = useState<"idle" | "loading" | "done" | "error">(
+    "idle"
+  );
+  const [gbpScanMessage, setGbpScanMessage] = useState<string | null>(null);
+
+  async function handleAutoFillWebsite() {
+    if (!lead.website_url) return;
+    setWebsiteScanState("loading");
+    try {
+      const res = await fetch("/api/scan/website", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: lead.website_url }),
+      });
+      const result = (await res.json()) as WebsiteScanResult;
+      onChange({
+        website_exists: result.website_exists,
+        website_mobile_friendly: result.website_mobile_friendly,
+        website_has_contact_form: result.website_has_contact_form,
+        website_last_updated_signal: result.website_last_updated_signal,
+      });
+      setWebsiteScanState("done");
+    } catch {
+      setWebsiteScanState("error");
+    }
+  }
+
+  async function handleAutoFillGbp() {
+    const query = [lead.business_name, lead.city].filter(Boolean).join(" ");
+    if (!query) return;
+    setGbpScanState("loading");
+    setGbpScanMessage(null);
+    try {
+      const res = await fetch("/api/scan/gbp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      const result = (await res.json()) as PlacesScanResult;
+      if (!result.configured) {
+        setGbpScanState("error");
+        setGbpScanMessage("Not set up yet — needs a Google Places API key.");
+        return;
+      }
+      if (!result.found) {
+        setGbpScanState("error");
+        setGbpScanMessage(result.error || "No matching Google Business Profile found.");
+        return;
+      }
+      onChange({
+        gbp_rating: result.gbp_rating,
+        gbp_review_count: result.gbp_review_count,
+        gbp_last_review_date: result.gbp_last_review_date,
+      });
+      setGbpScanState("done");
+    } catch {
+      setGbpScanState("error");
+      setGbpScanMessage("Lookup failed.");
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <Section title="Google Business Profile">
+      <Section
+        title="Google Business Profile"
+        action={
+          <div className="flex items-center gap-2">
+            {gbpScanMessage && <span className="text-xs text-rose-500">{gbpScanMessage}</span>}
+            <button
+              type="button"
+              onClick={handleAutoFillGbp}
+              disabled={gbpScanState === "loading" || !lead.business_name}
+              className={autoFillButtonClass}
+              title="Auto-fills rating, review count, and most recent review date only — claimed status and owner replies can't be fetched for businesses you don't manage."
+            >
+              {gbpScanState === "loading" ? "Looking up…" : "Auto-fill from Google"}
+            </button>
+          </div>
+        }
+      >
         <Field
           label="Claimed / verified?"
           help="Is the Google Business Profile claimed/verified? Reveals review-generation gap — core pitch angle."
@@ -101,7 +199,25 @@ export default function ScorecardForm({
         </Field>
       </Section>
 
-      <Section title="Website">
+      <Section
+        title="Website"
+        action={
+          <div className="flex items-center gap-2">
+            {websiteScanState === "error" && (
+              <span className="text-xs text-rose-500">Couldn&apos;t reach that site.</span>
+            )}
+            <button
+              type="button"
+              onClick={handleAutoFillWebsite}
+              disabled={websiteScanState === "loading" || !lead.website_url}
+              className={autoFillButtonClass}
+              title="Fetches the site and infers mobile-friendliness, contact form presence, and copyright year — heuristics, not ground truth."
+            >
+              {websiteScanState === "loading" ? "Scanning…" : "Auto-fill from website"}
+            </button>
+          </div>
+        }
+      >
         <Field label="Website exists?" help="Do they have a live website?">
           <BoolToggle
             value={scorecard.website_exists}

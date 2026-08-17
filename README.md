@@ -77,12 +77,37 @@ src/
     repo/                           # Data access (leads, scorecards, call logs)
 ```
 
+## Auto-fill
+
+Two "Auto-fill" buttons on the scorecard reduce manual lookup — both stay
+fully editable/overridable afterward:
+
+- **Auto-fill from website** (`lib/website-scan.ts`, always on, no API key)
+  — fetches the lead's site and infers `website_exists`,
+  `website_mobile_friendly` (viewport meta), `website_has_contact_form`
+  (`<form>`/`tel:` presence), and `website_last_updated_signal` (copyright
+  year). These are heuristics, not ground truth.
+- **Auto-fill from Google** (`lib/places-scan.ts`, needs
+  `GOOGLE_PLACES_API_KEY`) — looks up the business by name+city via the
+  Google Places API and fills `gbp_rating`, `gbp_review_count`, and
+  `gbp_last_review_date`. Shows "Not set up yet" until a key is provided.
+
+**Fields that can never be auto-fetched, for any business you don't
+manage, regardless of tooling or budget** — these stay manual by
+necessity, not by choice:
+- `gbp_claimed` and `gbp_owner_replies` — Google doesn't expose
+  claim/reply status for businesses outside your own account.
+- All Facebook/Instagram fields (`social_last_post_date`,
+  `social_followers`, `social_response_badge`,
+  `social_unanswered_comments`) — Meta's Graph API only returns this for
+  pages you administer.
+- `other_reviews_sentiment`, `local_search_rank`, `running_ads`,
+  `competitor_notes`, `website_gallery_updated` — would need paid
+  scraping/SERP services (e.g. SerpApi) or manual lookup; no clean API
+  exists for any of these.
+
 ## V2 hooks (not built, left as clear extension points)
 
-- **Auto-fetch GBP/social fields** — `lib/scoring.ts` and the `Scorecard`
-  type already mirror the shape a Google Places / Facebook Graph API fetch
-  would populate (rating, review count, followers, etc). Swapping manual
-  entry for an auto-fetch only touches where those values originate.
 - **CSV import/export** — the repo functions in `lib/repo/` are the only
   integration point a bulk import/export would need.
 - A second script template (e.g. a "Call 2" demo/close call) — `lib/script.ts`

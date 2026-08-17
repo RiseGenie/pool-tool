@@ -141,7 +141,7 @@ export default function LeadDetailClient({
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className={mobileTab === "scorecard" ? "block" : "hidden lg:block"}>
-          <ScorecardForm scorecard={scorecard} onChange={handleChange} />
+          <ScorecardForm lead={lead} scorecard={scorecard} onChange={handleChange} />
         </div>
         <div className={mobileTab === "script" ? "flex flex-col gap-4" : "hidden lg:flex lg:flex-col lg:gap-4"}>
           <CallScriptPanel model={script} />
